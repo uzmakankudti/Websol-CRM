@@ -14,13 +14,14 @@ import Login from './auth/Login';
 import ChangePassword from './auth/ChangePassword';
 import UsersPage from './pages/UsersPage';
 import AuditPage from './pages/AuditPage';
+import LeadsPage from './pages/LeadsPage';
 import { PERM } from './types';
 
-type View = 'users' | 'audit' | 'password';
+type View = 'leads' | 'users' | 'audit' | 'password';
 
 function Shell() {
   const { user, loading, logout, can } = useAuth();
-  const [view, setView] = useState<View>('users');
+  const [view, setView] = useState<View>('leads');
 
   if (loading) {
     return (
@@ -37,6 +38,7 @@ function Shell() {
 
   // Build the nav from permissions. The "My password" item is always available.
   const nav: { key: View; label: string; show: boolean }[] = [
+    { key: 'leads', label: 'Leads & Pipeline', show: can(PERM.leadsRead) },
     { key: 'users', label: 'Users', show: can(PERM.usersRead) },
     { key: 'audit', label: 'Audit log', show: can(PERM.auditRead) },
     { key: 'password', label: 'My password', show: true },
@@ -76,6 +78,7 @@ function Shell() {
       </aside>
 
       <main className="main">
+        {activeView === 'leads' && <LeadsPage />}
         {activeView === 'users' && <UsersPage />}
         {activeView === 'audit' && <AuditPage />}
         {activeView === 'password' && <ChangePassword />}

@@ -323,3 +323,176 @@ code.token {
   color: var(--muted);
   margin: 0;
 }
+
+/* --- Lead pipeline bar --- */
+.pipeline-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.pipeline-stage {
+  flex: 1;
+  min-width: 100px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+.pipeline-stage:hover {
+  border-color: var(--primary);
+}
+.pipeline-stage.active {
+  border-color: var(--primary);
+  background: #eff6ff;
+}
+.pipeline-stage-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.pipeline-stage-count {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* --- Stage pipeline breadcrumb (detail view) --- */
+.stage-pipeline {
+  display: flex;
+  gap: 0;
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+}
+.stage-step {
+  flex: 1;
+  min-width: 90px;
+  padding: 0.45rem 0.5rem;
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: #f1f5f9;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+.stage-step:first-child {
+  border-left: 1px solid var(--border);
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+.stage-step:last-child {
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+.stage-step.done {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+.stage-step.current {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary-dark);
+}
+.stage-step.won {
+  background: #16a34a;
+  border-color: #15803d;
+}
+.stage-step.lost {
+  background: var(--danger);
+  border-color: #b91c1c;
+}
+
+/* --- Detail grid (lead detail view) --- */
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+  align-items: start;
+}
+.detail-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+}
+.detail-card h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+}
+.detail-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.3rem 0.75rem;
+  font-size: 0.85rem;
+  margin: 0;
+}
+.detail-list.compact {
+  font-size: 0.82rem;
+}
+.detail-list dt {
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.detail-list dd {
+  margin: 0;
+  word-break: break-word;
+}
+
+/* --- Quotation card within detail view --- */
+.quotation-card {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.75rem;
+}
+.quotation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+/* --- Printer row in quotation form --- */
+.printer-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+.printer-row input {
+  min-width: 0;
+}
+
+/* --- Badge variants for quotation status --- */
+.badge-pending {
+  background: #fef9c3;
+  color: #713f12;
+}
+.badge-warning {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+textarea {
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.92rem;
+  font-family: inherit;
+  background: #fff;
+}
+textarea:focus {
+  outline: 2px solid var(--primary);
+  border-color: var(--primary);
+}

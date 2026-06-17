@@ -9,3 +9,4 @@ import './functions/health';
 import './functions/auth';
 import './functions/users';
 import './functions/audit';
+import './functions/leads';

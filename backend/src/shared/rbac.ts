@@ -17,7 +17,7 @@ export interface AuthContext {
   perms: string[];
 }
 
-/** Permission codes used across this module (kept in sync with migration 002). */
+/** Permission codes used across this module (kept in sync with migrations 002–003). */
 export const PERMISSIONS = {
   usersRead: 'users.read',
   usersCreate: 'users.create',
@@ -26,6 +26,13 @@ export const PERMISSIONS = {
   usersResetPassword: 'users.reset_password',
   rolesRead: 'roles.read',
   auditRead: 'audit.read',
+  leadsRead: 'leads.read',
+  leadsCreate: 'leads.create',
+  leadsUpdate: 'leads.update',
+  leadsChangeStage: 'leads.change_stage',
+  leadsConvert: 'leads.convert',
+  quotationsCreate: 'quotations.create',
+  quotationsApprove: 'quotations.approve',
 } as const;
 
 /** Extract and verify the bearer token; throws 401 if missing/invalid. */
