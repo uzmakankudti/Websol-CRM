@@ -5,6 +5,12 @@ A printer leasing / **Managed Print Services (MPS)** system.
 **Stack:** MySQL · Node.js + TypeScript (Azure Functions, serverless) · React +
 TypeScript (Azure Static Web Apps) · Flutter (mobile) — all on Microsoft Azure.
 
+## Modules
+
+- **User & Access Management** — secure login, role-based permissions, user
+  administration and an audit log. See
+  [docs/access-management.md](docs/access-management.md).
+
 ## Repository layout
 
 ```

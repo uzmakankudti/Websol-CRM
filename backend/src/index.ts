@@ -6,3 +6,6 @@
  * Import every function file here so they all get registered.
  */
 import './functions/health';
+import './functions/auth';
+import './functions/users';
+import './functions/audit';
