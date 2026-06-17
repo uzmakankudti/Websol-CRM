@@ -1,0 +1,20 @@
+{
+  "name": "websol-crm",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Websol CRM — printer leasing (Managed Print Services) system. Monorepo root.",
+  "scripts": {
+    "format": "prettier --write \"{backend,web}/**/*.{ts,tsx,js,json,css}\"",
+    "format:check": "prettier --check \"{backend,web}/**/*.{ts,tsx,js,json,css}\"",
+    "lint:backend": "npm --prefix backend run lint",
+    "lint:web": "npm --prefix web run lint",
+    "lint": "npm run lint:backend && npm run lint:web",
+    "test:backend": "npm --prefix backend test",
+    "test": "npm run test:backend",
+    "check": "npm run lint && npm test",
+    "install:all": "npm install && npm --prefix backend install && npm --prefix web install"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3"
+  }
+}

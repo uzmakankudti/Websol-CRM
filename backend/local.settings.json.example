@@ -1,0 +1,19 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "AzureWebJobsFeatureFlags": "EnableWorkerIndexing",
+
+    "DB_HOST": "localhost",
+    "DB_PORT": "3306",
+    "DB_USER": "websol",
+    "DB_PASSWORD": "Websol@Local123",
+    "DB_NAME": "websol_crm",
+    "DB_CONNECTION_LIMIT": "5",
+    "DB_SSL": "false",
+
+    "NODE_ENV": "development",
+    "APP_SECRET": "669667bd38c9223b693fc852814d02312348c2f6831db7c399391d11d39f87a491a81b1af134c389ea36855e6b8fa960"
+  }
+}

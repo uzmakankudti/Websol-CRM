@@ -1,0 +1,9 @@
+*.js.map
+.git*
+.vscode
+local.settings.json
+test
+node_modules/@types
+src
+tsconfig.json
+.eslintrc.json
