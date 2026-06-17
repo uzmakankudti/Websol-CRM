@@ -10,6 +10,12 @@ TypeScript (Azure Static Web Apps) · Flutter (mobile) — all on Microsoft Azur
 - **User & Access Management** — secure login, role-based permissions, user
   administration and an audit log. See
   [docs/access-management.md](docs/access-management.md).
+- **Lead & Opportunity Management** — sales pipeline, lease quotations with
+  discount approval, and lead→customer conversion.
+- **Customer & Contract Management** — company profiles (sites, contacts,
+  billing) and lease contracts (printers, per-click pricing, SLA tiers, signed
+  documents, status lifecycle, 90-day expiry tracking). See
+  [docs/customer-contract-management.md](docs/customer-contract-management.md).
 
 ## Repository layout
 

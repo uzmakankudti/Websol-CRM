@@ -496,3 +496,39 @@ textarea:focus {
   outline: 2px solid var(--primary);
   border-color: var(--primary);
 }
+
+/* --- Module 3: Customer & Contract Management --- */
+.form-row {
+  display: flex;
+  gap: 0.75rem;
+}
+.form-row > div {
+  flex: 1;
+  min-width: 0;
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.card-head h3 {
+  margin: 0;
+}
+/* SLA tier badges */
+.sla-platinum {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+.sla-gold {
+  background: #fef3c7;
+  color: #92400e;
+}
+.sla-silver {
+  background: #e5e7eb;
+  color: #374151;
+}
+.sla-bronze {
+  background: #fae8d8;
+  color: #7c2d12;
+}

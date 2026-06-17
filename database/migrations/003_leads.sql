@@ -88,12 +88,13 @@ CREATE TABLE IF NOT EXISTS leads (
   stage                 ENUM('NEW','CONTACTED','PROPOSAL_SENT','WON','LOST')
                           NOT NULL DEFAULT 'NEW',
   stage_note            TEXT NULL,
-  assigned_to           INT UNSIGNED NULL,
+  -- assigned_to / converted_by / created_by reference users.id (BIGINT UNSIGNED).
+  assigned_to           BIGINT UNSIGNED NULL,
   lost_reason           VARCHAR(500) NULL,
   converted_customer_id BIGINT UNSIGNED NULL,
   converted_at          DATETIME NULL,
-  converted_by          INT UNSIGNED NULL,
-  created_by            INT UNSIGNED NOT NULL,
+  converted_by          BIGINT UNSIGNED NULL,
+  created_by            BIGINT UNSIGNED NOT NULL,
   created_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_leads_assigned   FOREIGN KEY (assigned_to)           REFERENCES users     (id),
@@ -117,10 +118,10 @@ CREATE TABLE IF NOT EXISTS lead_quotations (
   -- APPROVED: ready for use / conversion; REJECTED: manager declined.
   status            ENUM('DRAFT','PENDING_APPROVAL','APPROVED','REJECTED')
                       NOT NULL DEFAULT 'DRAFT',
-  approved_by       INT UNSIGNED NULL,
+  approved_by       BIGINT UNSIGNED NULL,
   approved_at       DATETIME     NULL,
   approval_note     TEXT         NULL,
-  created_by        INT UNSIGNED NOT NULL,
+  created_by        BIGINT UNSIGNED NOT NULL,
   created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_lq_lead     FOREIGN KEY (lead_id)    REFERENCES leads (id),
@@ -150,7 +151,7 @@ CREATE TABLE IF NOT EXISTS lead_stage_history (
   from_stage VARCHAR(30)  NULL,         -- NULL for the initial NEW stage
   to_stage   VARCHAR(30)  NOT NULL,
   note       TEXT         NULL,
-  changed_by INT UNSIGNED NOT NULL,
+  changed_by BIGINT UNSIGNED NOT NULL,
   changed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_lsh_lead FOREIGN KEY (lead_id)    REFERENCES leads (id),
   CONSTRAINT fk_lsh_user FOREIGN KEY (changed_by) REFERENCES users (id)

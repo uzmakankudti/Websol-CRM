@@ -10,3 +10,5 @@ import './functions/auth';
 import './functions/users';
 import './functions/audit';
 import './functions/leads';
+import './functions/customers';
+import './functions/contracts';

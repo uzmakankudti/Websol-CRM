@@ -33,6 +33,14 @@ export const PERMISSIONS = {
   leadsConvert: 'leads.convert',
   quotationsCreate: 'quotations.create',
   quotationsApprove: 'quotations.approve',
+  customersRead: 'customers.read',
+  customersCreate: 'customers.create',
+  customersUpdate: 'customers.update',
+  contractsRead: 'contracts.read',
+  contractsCreate: 'contracts.create',
+  contractsUpdate: 'contracts.update',
+  contractsActivate: 'contracts.activate',
+  contractsTerminate: 'contracts.terminate',
 } as const;
 
 /** Extract and verify the bearer token; throws 401 if missing/invalid. */

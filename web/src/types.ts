@@ -72,6 +72,133 @@ export interface LeadDetail {
   stageHistory: StageHistoryEntry[];
 }
 
+// ---------------------------------------------------------------------------
+// Customer & Contract Management (Module 3)
+// ---------------------------------------------------------------------------
+
+export type CustomerStatus = 'ACTIVE' | 'INACTIVE';
+export type SlaTier = 'PLATINUM' | 'GOLD' | 'SILVER' | 'BRONZE';
+export type ContractStatus = 'DRAFT' | 'ACTIVE' | 'EXPIRED' | 'TERMINATED';
+
+export interface UserRef {
+  id: number;
+  fullName: string | null;
+}
+
+export interface Customer {
+  id: number;
+  name: string;
+  registrationNo: string | null;
+  vatNo: string | null;
+  industry: string | null;
+  website: string | null;
+  email: string | null;
+  phone: string | null;
+  billingAddress: string | null;
+  billingEmail: string | null;
+  billingPhone: string | null;
+  status: CustomerStatus;
+  notes: string | null;
+  createdBy: UserRef | null;
+  createdAt: string;
+  updatedAt: string;
+  /** Present only on the list endpoint. */
+  contractCount?: number;
+  activeContractCount?: number;
+}
+
+export interface CustomerSite {
+  id: number;
+  customerId: number;
+  name: string;
+  address: string | null;
+  city: string | null;
+  postalCode: string | null;
+  contactName: string | null;
+  contactPhone: string | null;
+  isPrimary: boolean;
+  createdAt: string;
+}
+
+export interface CustomerContact {
+  id: number;
+  customerId: number;
+  name: string;
+  title: string | null;
+  email: string | null;
+  phone: string | null;
+  isPrimary: boolean;
+  createdAt: string;
+}
+
+export interface ContractSummary {
+  id: number;
+  contractNo: string;
+  startDate: string;
+  endDate: string;
+  monthlyLeaseFee: number;
+  perClickBw: number;
+  perClickColour: number;
+  slaTier: SlaTier;
+  status: ContractStatus;
+  hasDocument: boolean;
+}
+
+export interface CustomerDetail {
+  customer: Customer;
+  sites: CustomerSite[];
+  contacts: CustomerContact[];
+  contracts: ContractSummary[];
+}
+
+export interface ContractPrinter {
+  id: number;
+  printerModel: string;
+  serialNo: string | null;
+  siteId: number | null;
+  quantity: number;
+}
+
+export interface ContractDocument {
+  id: number;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  uploadedBy: UserRef | null;
+  uploadedAt: string;
+}
+
+export interface Contract {
+  id: number;
+  customerId: number;
+  customerName: string | null;
+  contractNo: string;
+  startDate: string;
+  endDate: string;
+  monthlyLeaseFee: number;
+  perClickBw: number;
+  perClickColour: number;
+  slaTier: SlaTier;
+  status: ContractStatus;
+  notes: string | null;
+  daysUntilExpiry: number;
+  expiringSoon: boolean;
+  activatedAt: string | null;
+  activatedBy: UserRef | null;
+  terminatedAt: string | null;
+  terminatedBy: UserRef | null;
+  terminationReason: string | null;
+  createdBy: UserRef;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ContractDetail {
+  contract: Contract;
+  printers: ContractPrinter[];
+  documents: ContractDocument[];
+}
+
 export interface Role {
   id: number;
   code: string;
@@ -123,4 +250,12 @@ export const PERM = {
   leadsConvert: 'leads.convert',
   quotationsCreate: 'quotations.create',
   quotationsApprove: 'quotations.approve',
+  customersRead: 'customers.read',
+  customersCreate: 'customers.create',
+  customersUpdate: 'customers.update',
+  contractsRead: 'contracts.read',
+  contractsCreate: 'contracts.create',
+  contractsUpdate: 'contracts.update',
+  contractsActivate: 'contracts.activate',
+  contractsTerminate: 'contracts.terminate',
 } as const;
