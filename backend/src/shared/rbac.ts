@@ -53,6 +53,12 @@ export const PERMISSIONS = {
   dispatchCreate: 'dispatch.create',
   dispatchUpdate: 'dispatch.update',
   dispatchDeliver: 'dispatch.deliver',
+  serviceRead: 'service.read',
+  serviceCreate: 'service.create',
+  serviceAssign: 'service.assign',
+  serviceUpdate: 'service.update',
+  serviceClose: 'service.close',
+  serviceEscalate: 'service.escalate',
 } as const;
 
 /** Extract and verify the bearer token; throws 401 if missing/invalid. */

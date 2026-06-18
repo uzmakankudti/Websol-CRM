@@ -1,0 +1,28 @@
+name: websol_crm
+description: Websol CRM — Field Service technician app.
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0                # REST calls to the Azure Functions backend
+  shared_preferences: ^2.2.0 # persist JWT + the offline action queue
+  provider: ^6.1.0           # simple app state
+  geolocator: ^11.0.0        # GPS check-in
+  connectivity_plus: ^6.0.0  # detect online/offline to drive sync
+  signature: ^5.4.0          # capture customer digital signature
+  image_picker: ^1.0.0       # meter-reading photo
+  uuid: ^4.3.0               # client_action_id for idempotent sync
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true

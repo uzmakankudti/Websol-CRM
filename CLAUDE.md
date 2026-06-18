@@ -34,7 +34,9 @@ Other shared modules: `db.ts`, `http.ts`, `config.ts`, `users-repo.ts`.
 - ✅ 2 — Lead & Opportunity Management
 - ✅ 3 — Customer & Contract Management
 - ✅ 4 — Asset / Printer Management
-- ⬜ 5 — Inventory / Warehouse Management (next)
+- ✅ 5 — Inventory / Warehouse Management
+- ✅ 6 — Dispatch & Delivery Management
+- ✅ 7 — Field Service Management (+ Flutter technician app)
 
 ## Build rhythm
 
