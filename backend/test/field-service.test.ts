@@ -95,6 +95,12 @@ function ticketRow(extra: Record<string, unknown> = {}) {
     escalated_to: null,
     escalated_to_name: null,
     description: 'Paper jam',
+    source: 'PHONE',
+    sla_tier: null,
+    issue_category_id: null,
+    issue_category_name: null,
+    reopen_count: 0,
+    last_resolved_at: null,
     scheduled_date: '2026-06-18',
     sla_due_at: '2026-06-18 17:00:00',
     in_transit_at: null,
@@ -687,7 +693,7 @@ describe('Close ticket', () => {
   it('closes with a digital signature, returns 200', async () => {
     setupClose();
     const res = await closeTicket(
-      req({ token: techToken(), params: { id: '100' }, body: { method: 'SIGNATURE', signatureName: 'Jane', signatureImage: 'data:image/png;base64,AAA' } }),
+      req({ token: techToken(), params: { id: '100' }, body: { method: 'SIGNATURE', signatureName: 'Jane', signatureImage: 'data:image/png;base64,AAA', resolutionNotes: 'Paper jam cleared' } }),
       {} as never,
     );
     expect(res.status).toBe(200);
@@ -702,7 +708,7 @@ describe('Close ticket', () => {
       .mockResolvedValueOnce({ affectedRows: 1 })
       .mockResolvedValueOnce([ticketRow({ status: 'CLOSED', close_method: 'OTP' })]);
     const res = await closeTicket(
-      req({ token: techToken(), params: { id: '100' }, body: { method: 'OTP', otp: '123456' } }),
+      req({ token: techToken(), params: { id: '100' }, body: { method: 'OTP', otp: '123456', resolutionNotes: 'Issue resolved on site' } }),
       {} as never,
     );
     expect(res.status).toBe(200);
@@ -741,7 +747,7 @@ describe('Close ticket', () => {
   it('can close from ON_SITE', async () => {
     setupClose('ON_SITE');
     const res = await closeTicket(
-      req({ token: techToken(), params: { id: '100' }, body: { method: 'SIGNATURE', signatureName: 'Jane' } }),
+      req({ token: techToken(), params: { id: '100' }, body: { method: 'SIGNATURE', signatureName: 'Jane', resolutionNotes: 'Fixed on site' } }),
       {} as never,
     );
     expect(res.status).toBe(200);
@@ -1052,7 +1058,7 @@ describe('Module 7 acceptance', () => {
       .mockResolvedValueOnce({ affectedRows: 1 })  // writeAudit
       .mockResolvedValueOnce([ticketRow({ status: 'CLOSED', close_method: 'SIGNATURE', signature_name: 'Jane Doe' })]);
     await closeTicket(
-      req({ token: techToken(), params: { id: '100' }, body: { method: 'SIGNATURE', signatureName: 'Jane Doe', signatureImage: 'data:image/png;base64,AAA' } }),
+      req({ token: techToken(), params: { id: '100' }, body: { method: 'SIGNATURE', signatureName: 'Jane Doe', signatureImage: 'data:image/png;base64,AAA', resolutionNotes: 'Fixed the jam' } }),
       {} as never,
     );
     const update = queryMock.mock.calls.find(([s]) =>

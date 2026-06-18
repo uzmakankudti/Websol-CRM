@@ -59,6 +59,9 @@ export const PERMISSIONS = {
   serviceUpdate: 'service.update',
   serviceClose: 'service.close',
   serviceEscalate: 'service.escalate',
+  serviceResolve: 'service.resolve',
+  serviceReopen: 'service.reopen',
+  helpdeskManage: 'helpdesk.manage',
 } as const;
 
 /** Extract and verify the bearer token; throws 401 if missing/invalid. */

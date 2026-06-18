@@ -69,6 +69,13 @@ interface TicketRow extends RowDataPacket {
   escalated_to: number | null;
   escalated_to_name: string | null;
   description: string | null;
+  // Helpdesk fields (added by migration 009)
+  source: string;
+  sla_tier: string | null;
+  issue_category_id: number | null;
+  issue_category_name: string | null;
+  reopen_count: number;
+  last_resolved_at: string | null;
   scheduled_date: string | null;
   sla_due_at: string | null;
   in_transit_at: string | null;
@@ -101,8 +108,11 @@ const VISIT_TYPES = [
 
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
 
-/** SLA response window (hours) by priority — drives sla_due_at at creation. */
+/** SLA response window (hours) by priority — fallback when no contract tier is supplied. */
 const SLA_HOURS: Record<string, number> = { CRITICAL: 4, HIGH: 8, MEDIUM: 24, LOW: 72 };
+
+/** BR-013: SLA response hours by contract SLA tier (overrides priority when a contract is linked). */
+const SLA_TIER_HOURS: Record<string, number> = { PLATINUM: 2, GOLD: 4, SILVER: 8, BRONZE: 24 };
 
 /** Statuses considered "active" (work still outstanding). */
 const ACTIVE_STATUSES = ['OPEN', 'ASSIGNED', 'IN_TRANSIT', 'ON_SITE', 'IN_PROGRESS'] as const;
@@ -143,7 +153,8 @@ const TICKET_SELECT = `
          p.serial_no AS printer_serial, p.model AS printer_model, p.is_colour AS printer_is_colour,
          au.full_name AS assigned_to_name,
          eu.full_name AS escalated_to_name,
-         cb.full_name AS created_by_name
+         cb.full_name AS created_by_name,
+         cat.name AS issue_category_name
     FROM service_tickets t
     JOIN customers cu        ON cu.id = t.customer_id
     LEFT JOIN customer_sites s ON s.id  = t.site_id
@@ -151,7 +162,8 @@ const TICKET_SELECT = `
     LEFT JOIN printers p       ON p.id  = t.printer_id
     LEFT JOIN users au         ON au.id = t.assigned_to
     LEFT JOIN users eu         ON eu.id = t.escalated_to
-    LEFT JOIN users cb         ON cb.id = t.created_by`;
+    LEFT JOIN users cb         ON cb.id = t.created_by
+    LEFT JOIN helpdesk_issue_categories cat ON cat.id = t.issue_category_id`;
 
 async function findTicket(id: number): Promise<TicketRow | null> {
   const rows = await query<TicketRow[]>(`${TICKET_SELECT} WHERE t.id = ? LIMIT 1`, [id]);
@@ -179,6 +191,13 @@ function toTicketPublic(row: TicketRow) {
     assignedTo: row.assigned_to ? { id: row.assigned_to, fullName: row.assigned_to_name } : null,
     escalatedTo: row.escalated_to ? { id: row.escalated_to, fullName: row.escalated_to_name } : null,
     description: row.description,
+    source: row.source ?? 'PHONE',
+    slaTier: row.sla_tier ?? null,
+    issueCategory: row.issue_category_id
+      ? { id: row.issue_category_id, name: row.issue_category_name }
+      : null,
+    reopenCount: row.reopen_count ?? 0,
+    lastResolvedAt: row.last_resolved_at ?? null,
     scheduledDate: row.scheduled_date,
     slaDueAt: row.sla_due_at,
     inTransitAt: row.in_transit_at,
@@ -446,14 +465,19 @@ async function applyClose(ctx: AuthContext, ticket: TicketRow, payload: Record<s
     }
   }
 
-  const at = nowOr(payload.occurredAt);
+  // BR-014: a resolution note is mandatory regardless of close method.
   const resolutionNotes = str(payload.resolutionNotes);
+  if (!resolutionNotes) {
+    throw new HttpError(400, 'resolutionNotes is required to close a ticket (BR-014)', 'RESOLUTION_NOTES_REQUIRED');
+  }
+
+  const at = nowOr(payload.occurredAt);
 
   await transition(
-    ticket.id, ticket.status, 'CLOSED', 'Ticket closed on site', ctx.userId,
-    `closed_at = ?, resolved_at = COALESCE(resolved_at, ?), close_method = ?,
-     signature_name = ?, signature_image = ?, resolution_notes = ?`,
-    [at, at, method, method === 'SIGNATURE' ? signatureName : null,
+    ticket.id, ticket.status, 'CLOSED', 'Ticket closed', ctx.userId,
+    `closed_at = ?, resolved_at = COALESCE(resolved_at, ?), last_resolved_at = ?,
+     close_method = ?, signature_name = ?, signature_image = ?, resolution_notes = ?`,
+    [at, at, at, method, method === 'SIGNATURE' ? signatureName : null,
       method === 'SIGNATURE' ? signatureImage : null, resolutionNotes],
   );
 
@@ -465,6 +489,28 @@ async function applyClose(ctx: AuthContext, ticket: TicketRow, payload: Record<s
   });
 
   return { method };
+}
+
+async function applyResolve(ctx: AuthContext, ticket: TicketRow, payload: Record<string, unknown>, ip: string | null) {
+  assertStatus(ticket, ['ON_SITE', 'IN_PROGRESS', 'ESCALATED'], 'resolve');
+
+  const resolutionNotes = str(payload.resolutionNotes);
+  if (!resolutionNotes) {
+    throw new HttpError(400, 'resolutionNotes is required to resolve a ticket (BR-014)', 'RESOLUTION_NOTES_REQUIRED');
+  }
+  const at = nowOr(payload.occurredAt);
+
+  await transition(
+    ticket.id, ticket.status, 'RESOLVED', resolutionNotes, ctx.userId,
+    'resolved_at = ?, last_resolved_at = ?, resolution_notes = ?', [at, at, resolutionNotes],
+  );
+
+  await writeAudit({
+    actorUserId: ctx.userId, actorEmail: ctx.email,
+    entityType: 'service_ticket', entityId: ticket.id, action: 'resolve',
+    changes: { after: { status: 'RESOLVED', resolutionNotes } }, ipAddress: ip,
+  });
+  return { resolvedAt: at };
 }
 
 async function applyEscalate(ctx: AuthContext, ticket: TicketRow, payload: Record<string, unknown>, ip: string | null) {
@@ -665,11 +711,52 @@ export const createTicket = handle(async (request: HttpRequest): Promise<HttpRes
     return error(400, `priority must be one of: ${PRIORITIES.join(', ')}`);
   }
 
+  const source = ['PHONE', 'PORTAL', 'EMAIL'].includes(String(body.source ?? '').trim().toUpperCase())
+    ? String(body.source).trim().toUpperCase()
+    : 'PHONE';
+  const issueCategoryId = body.issueCategoryId != null ? Number(body.issueCategoryId) : null;
+  const autoAssign = !!body.autoAssign;
+
   // Verify customer exists.
   const [customer] = await query<RowDataPacket[]>(`SELECT id FROM customers WHERE id = ? LIMIT 1`, [customerId]);
   if (!customer) return error(404, 'Customer not found');
 
-  const assignedTo = body.assignedTo != null ? Number(body.assignedTo) : null;
+  let assignedTo: number | null = body.assignedTo != null ? Number(body.assignedTo) : null;
+  const contractId = body.contractId != null ? Number(body.contractId) : null;
+  const siteId = body.siteId != null ? Number(body.siteId) : null;
+
+  // BR-013: SLA hours from contract tier when a contract is supplied; else priority fallback.
+  let slaTier: string | null = null;
+  let slaHours = SLA_HOURS[priority];
+  if (contractId) {
+    const [contract] = await query<RowDataPacket[]>(
+      `SELECT id, sla_tier FROM contracts WHERE id = ? AND customer_id = ? LIMIT 1`,
+      [contractId, customerId],
+    );
+    if (!contract) return error(404, 'Contract not found or does not belong to this customer');
+    slaTier = contract.sla_tier as string;
+    slaHours = SLA_TIER_HOURS[slaTier] ?? slaHours;
+  }
+
+  // Auto-assign: find the least-busy FIELD_TECHNICIAN in the same region as the site.
+  if (autoAssign && !assignedTo && siteId) {
+    const [site] = await query<RowDataPacket[]>(
+      `SELECT city FROM customer_sites WHERE id = ? LIMIT 1`, [siteId],
+    );
+    if (site?.city) {
+      const [tech] = await query<RowDataPacket[]>(
+        `SELECT u.id FROM users u
+          JOIN roles r ON r.id = u.role_id
+         WHERE r.code = 'FIELD_TECHNICIAN' AND u.is_active = 1 AND u.region = ?
+         ORDER BY (SELECT COUNT(*) FROM service_tickets st
+                   WHERE st.assigned_to = u.id
+                     AND st.status NOT IN ('CLOSED','CANCELLED')) ASC
+         LIMIT 1`,
+        [site.city],
+      );
+      if (tech) assignedTo = Number(tech.id);
+    }
+  }
 
   // Order number: SVC-YYYY-NNNN.
   const year = new Date().getFullYear();
@@ -680,23 +767,20 @@ export const createTicket = handle(async (request: HttpRequest): Promise<HttpRes
   const seq = String(Number(countRow.cnt) + 1).padStart(4, '0');
   const ticketNo = `SVC-${year}-${seq}`;
 
-  // SLA deadline from priority window.
-  const slaHours = SLA_HOURS[priority];
-  const slaDueAt = new Date(Date.now() + slaHours * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
-
+  const slaDueAt = new Date(Date.now() + slaHours * 3600_000).toISOString().slice(0, 19).replace('T', ' ');
   const startStatus = assignedTo ? 'ASSIGNED' : 'OPEN';
 
   const result = await query<ResultSetHeader>(
     `INSERT INTO service_tickets
        (ticket_no, visit_type, priority, status, customer_id, site_id, contract_id, printer_id,
-        assigned_to, description, scheduled_date, sla_due_at, created_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        assigned_to, description, scheduled_date, sla_due_at, source, sla_tier, issue_category_id, created_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       ticketNo, visitType, priority, startStatus, customerId,
-      body.siteId != null ? Number(body.siteId) : null,
-      body.contractId != null ? Number(body.contractId) : null,
+      siteId, contractId,
       body.printerId != null ? Number(body.printerId) : null,
-      assignedTo, str(body.description), str(body.scheduledDate), slaDueAt, ctx.userId,
+      assignedTo, str(body.description), str(body.scheduledDate), slaDueAt,
+      source, slaTier, issueCategoryId, ctx.userId,
     ],
   );
   const newId = result.insertId;
@@ -822,6 +906,7 @@ export const checkInTicket = actionHandler(PERMISSIONS.serviceUpdate, applyCheck
 export const startTicket = actionHandler(PERMISSIONS.serviceUpdate, applyStart);
 export const meterTicket = actionHandler(PERMISSIONS.serviceUpdate, applyMeter);
 export const partsTicket = actionHandler(PERMISSIONS.serviceUpdate, applyParts);
+export const resolveTicket = actionHandler(PERMISSIONS.serviceResolve, applyResolve);
 export const closeTicket = actionHandler(PERMISSIONS.serviceClose, applyClose);
 export const escalateTicket = actionHandler(PERMISSIONS.serviceEscalate, applyEscalate);
 export const cancelTicket = actionHandler(PERMISSIONS.serviceUpdate, applyCancel);
@@ -908,6 +993,7 @@ app.http('service-tickets-checkin',  { methods: ['POST'],  authLevel: 'anonymous
 app.http('service-tickets-start',    { methods: ['POST'],  authLevel: 'anonymous', route: 'service-tickets/{id}/start',   handler: startTicket });
 app.http('service-tickets-meter',    { methods: ['POST'],  authLevel: 'anonymous', route: 'service-tickets/{id}/meter',   handler: meterTicket });
 app.http('service-tickets-parts',    { methods: ['POST'],  authLevel: 'anonymous', route: 'service-tickets/{id}/parts',   handler: partsTicket });
+app.http('service-tickets-resolve',  { methods: ['POST'],  authLevel: 'anonymous', route: 'service-tickets/{id}/resolve', handler: resolveTicket });
 app.http('service-tickets-close',    { methods: ['POST'],  authLevel: 'anonymous', route: 'service-tickets/{id}/close',   handler: closeTicket });
 app.http('service-tickets-escalate', { methods: ['POST'],  authLevel: 'anonymous', route: 'service-tickets/{id}/escalate',handler: escalateTicket });
 app.http('service-tickets-cancel',   { methods: ['POST'],  authLevel: 'anonymous', route: 'service-tickets/{id}/cancel',  handler: cancelTicket });

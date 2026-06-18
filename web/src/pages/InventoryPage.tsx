@@ -101,7 +101,7 @@ function WarehousesTab() {
 
   if (selected) {
     return (
-      <WarehouseDetail
+      <WarehouseDetailView
         detail={selected}
         onBack={() => setSelected(null)}
         onEdit={can(PERM.inventoryAdjust) ? (w) => setShowEdit(w) : undefined}
@@ -168,7 +168,7 @@ function WarehousesTab() {
   );
 }
 
-function WarehouseDetail({
+function WarehouseDetailView({
   detail, onBack, onEdit,
 }: {
   detail: WarehouseDetail;

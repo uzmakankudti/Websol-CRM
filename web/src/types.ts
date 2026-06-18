@@ -485,4 +485,76 @@ export const PERM = {
   dispatchCreate: 'dispatch.create',
   dispatchUpdate: 'dispatch.update',
   dispatchDeliver: 'dispatch.deliver',
+  serviceRead: 'service.read',
+  serviceCreate: 'service.create',
+  serviceAssign: 'service.assign',
+  serviceUpdate: 'service.update',
+  serviceClose: 'service.close',
+  serviceEscalate: 'service.escalate',
+  serviceResolve: 'service.resolve',
+  serviceReopen: 'service.reopen',
+  helpdeskManage: 'helpdesk.manage',
 } as const;
+
+// ---------------------------------------------------------------------------
+// Service Ticket Management — Module 8 (Helpdesk)
+// ---------------------------------------------------------------------------
+
+export type TicketStatus = 'OPEN' | 'ASSIGNED' | 'IN_TRANSIT' | 'ON_SITE' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'ESCALATED' | 'CANCELLED';
+export type TicketPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type TicketSource = 'PHONE' | 'PORTAL' | 'EMAIL';
+export type SlaAlertType = 'T_MINUS_1H' | 'BREACH' | 'DOUBLE_BREACH';
+
+export interface TicketUserRef { id: number; fullName: string | null; }
+export interface TicketSite { id: number; name: string | null; address: string | null; city: string | null; lat: number | null; lng: number | null; }
+export interface TicketPrinter { id: number; serialNo: string | null; model: string | null; isColour: boolean; }
+export interface IssueCategory { id: number; name: string; description: string | null; isActive: boolean; }
+
+export interface ServiceTicket {
+  id: number;
+  ticketNo: string;
+  visitType: string;
+  priority: TicketPriority;
+  status: TicketStatus;
+  customer: { id: number; name: string; phone: string | null; email: string | null };
+  site: TicketSite | null;
+  contractId: number | null;
+  contractNo: string | null;
+  printer: TicketPrinter | null;
+  assignedTo: TicketUserRef | null;
+  escalatedTo: TicketUserRef | null;
+  description: string | null;
+  source: TicketSource;
+  slaTier: SlaTier | null;
+  issueCategory: { id: number; name: string } | null;
+  reopenCount: number;
+  lastResolvedAt: string | null;
+  scheduledDate: string | null;
+  slaDueAt: string | null;
+  inTransitAt: string | null;
+  checkedInAt: string | null;
+  slaMet: boolean | null;
+  resolvedAt: string | null;
+  resolutionNotes: string | null;
+  closedAt: string | null;
+  closeMethod: 'SIGNATURE' | 'OTP' | null;
+  signatureName: string | null;
+  hasSignature: boolean;
+  escalatedAt: string | null;
+  escalationReason: string | null;
+  createdBy: TicketUserRef | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SlaAlert {
+  id: number;
+  ticketId: number;
+  ticketNo: string;
+  ticketStatus: TicketStatus;
+  alertType: SlaAlertType;
+  status: 'NEW' | 'NOTIFIED' | 'ESCALATED';
+  slaDueAt: string | null;
+  escalatedTo: string | null;
+  createdAt: string;
+}
