@@ -532,3 +532,59 @@ textarea:focus {
   background: #fae8d8;
   color: #7c2d12;
 }
+
+/* --- Module 4: Asset / Printer Management --- */
+
+/* Printer lifecycle status badges */
+.badge-ordered         { background: #dbeafe; color: #1e40af; }
+.badge-in-transit      { background: #bfdbfe; color: #1d4ed8; }
+.badge-received        { background: #e0f2fe; color: #0369a1; }
+.badge-qc-pass         { background: #dcfce7; color: #166534; }
+.badge-qc-fail         { background: #fee2e2; color: #991b1b; }
+.badge-in-stock        { background: #d1fae5; color: #065f46; }
+.badge-allocated       { background: #ede9fe; color: #5b21b6; }
+.badge-dispatched      { background: #e0e7ff; color: #3730a3; }
+.badge-installed       { background: #bbf7d0; color: #14532d; }
+.badge-under-repair    { background: #ffedd5; color: #9a3412; }
+.badge-replacement-out { background: #fef3c7; color: #92400e; }
+.badge-returned        { background: #f3f4f6; color: #374151; }
+.badge-refurbished     { background: #cffafe; color: #164e63; }
+.badge-retired         { background: #e5e7eb; color: #6b7280; }
+
+/* Status history timeline */
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.timeline-item {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.5rem 0 0.5rem 1.25rem;
+  border-left: 2px solid var(--border);
+  margin-left: 0.4rem;
+  position: relative;
+}
+.timeline-item::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--primary);
+  position: absolute;
+  left: -6px;
+  top: 0.85rem;
+  flex-shrink: 0;
+}
+.timeline-item:last-child {
+  border-left-color: transparent;
+}
+.timeline-status {
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+.timeline-meta {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 0.1rem;
+}

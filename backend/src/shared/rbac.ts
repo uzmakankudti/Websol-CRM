@@ -41,6 +41,10 @@ export const PERMISSIONS = {
   contractsUpdate: 'contracts.update',
   contractsActivate: 'contracts.activate',
   contractsTerminate: 'contracts.terminate',
+  printersRead: 'printers.read',
+  printersCreate: 'printers.create',
+  printersUpdate: 'printers.update',
+  printersManageStatus: 'printers.manage_status',
 } as const;
 
 /** Extract and verify the bearer token; throws 401 if missing/invalid. */

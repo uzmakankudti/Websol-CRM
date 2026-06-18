@@ -199,6 +199,58 @@ export interface ContractDetail {
   documents: ContractDocument[];
 }
 
+// ---------------------------------------------------------------------------
+// Asset / Printer Management (Module 4)
+// ---------------------------------------------------------------------------
+
+export type PrinterStatus =
+  | 'ORDERED' | 'IN_TRANSIT' | 'RECEIVED'
+  | 'QC_PASS' | 'QC_FAIL'
+  | 'IN_STOCK' | 'ALLOCATED' | 'DISPATCHED' | 'INSTALLED'
+  | 'UNDER_REPAIR' | 'REPLACEMENT_OUT'
+  | 'RETURNED' | 'REFURBISHED' | 'RETIRED';
+
+export type PrintTechnology = 'LASER' | 'INKJET' | 'LED' | 'THERMAL' | 'DOT_MATRIX' | 'OTHER';
+
+export interface Printer {
+  id: number;
+  serialNo: string;
+  assetNo: string | null;
+  brand: string;
+  model: string;
+  printTechnology: PrintTechnology;
+  isColour: boolean;
+  ppmBw: number | null;
+  ppmColour: number | null;
+  lifetimePages: number;
+  location: string | null;
+  warrantyExpiry: string | null;
+  currentContractId: number | null;
+  currentContractNo: string | null;
+  currentSiteId: number | null;
+  currentSiteName: string | null;
+  status: PrinterStatus;
+  notes: string | null;
+  createdBy: UserRef | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PrinterHistoryEntry {
+  id: number;
+  fromStatus: PrinterStatus | null;
+  toStatus: PrinterStatus;
+  reason: string | null;
+  changedBy: UserRef;
+  changedAt: string;
+}
+
+export interface PrinterDetail {
+  printer: Printer;
+  history: PrinterHistoryEntry[];
+  allowedTransitions: PrinterStatus[];
+}
+
 export interface Role {
   id: number;
   code: string;
@@ -258,4 +310,8 @@ export const PERM = {
   contractsUpdate: 'contracts.update',
   contractsActivate: 'contracts.activate',
   contractsTerminate: 'contracts.terminate',
+  printersRead: 'printers.read',
+  printersCreate: 'printers.create',
+  printersUpdate: 'printers.update',
+  printersManageStatus: 'printers.manage_status',
 } as const;
