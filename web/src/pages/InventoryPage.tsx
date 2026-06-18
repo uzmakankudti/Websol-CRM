@@ -6,6 +6,7 @@
  * Create/edit modals are gated by the caller's permissions.
  */
 import { useState, useEffect, useCallback } from 'react';
+import { getToken } from '../api/client';
 import { useAuth } from '../auth/context';
 import {
   PERM,
@@ -60,7 +61,8 @@ export default function InventoryPage() {
 // ---------------------------------------------------------------------------
 
 function WarehousesTab() {
-  const { token, can } = useAuth();
+  const { can } = useAuth();
+  const token = getToken() ?? '';
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -254,7 +256,7 @@ function WarehouseFormModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const { token } = useAuth();
+  const token = getToken() ?? '';
   const [form, setForm] = useState({
     code: existing?.code ?? '',
     name: existing?.name ?? '',
@@ -333,7 +335,8 @@ function WarehouseFormModal({
 // ---------------------------------------------------------------------------
 
 function GRNsTab() {
-  const { token, can } = useAuth();
+  const { can } = useAuth();
+  const token = getToken() ?? '';
   const [grns, setGrns] = useState<GRN[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -483,7 +486,7 @@ function GRNDetailView({ detail, onBack }: { detail: GRNDetail; onBack: () => vo
 }
 
 function GRNCreateModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const { token } = useAuth();
+  const token = getToken() ?? '';
   const [warehouseId, setWarehouseId] = useState('');
   const [supplierName, setSupplierName] = useState('');
   const [supplierRef, setSupplierRef] = useState('');
@@ -553,7 +556,8 @@ function GRNCreateModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
 // ---------------------------------------------------------------------------
 
 function ConsumablesTab() {
-  const { token, can } = useAuth();
+  const { can } = useAuth();
+  const token = getToken() ?? '';
   const [consumables, setConsumables] = useState<Consumable[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -743,7 +747,7 @@ function ConsumableFormModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const { token } = useAuth();
+  const token = getToken() ?? '';
   const [form, setForm] = useState({
     sku: existing?.sku ?? '',
     name: existing?.name ?? '',
@@ -824,7 +828,7 @@ function StockAdjustModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const { token } = useAuth();
+  const token = getToken() ?? '';
   const [warehouseId, setWarehouseId] = useState('');
   const [delta, setDelta] = useState('');
   const [reason, setReason] = useState('');

@@ -7,6 +7,7 @@
  * mark orders departed and delivered.
  */
 import { useState, useEffect, useCallback } from 'react';
+import { getToken } from '../api/client';
 import { useAuth } from '../auth/context';
 import { PERM, DispatchOrder, DispatchOrderItem, DispatchOrderDetail, DispatchStatus } from '../types';
 
@@ -445,7 +446,8 @@ function OrderDetailPanel({ orderId, token, canUpdate, canDeliver, onStatusChang
 // ---------------------------------------------------------------------------
 
 export default function DispatchPage() {
-  const { token, can } = useAuth();
+  const { can } = useAuth();
+  const token = getToken() ?? '';
   const [orders, setOrders] = useState<DispatchOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

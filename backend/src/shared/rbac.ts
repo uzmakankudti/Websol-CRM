@@ -62,6 +62,9 @@ export const PERMISSIONS = {
   serviceResolve: 'service.resolve',
   serviceReopen: 'service.reopen',
   helpdeskManage: 'helpdesk.manage',
+  tonerRead:   'toner.read',
+  tonerUpdate: 'toner.update',
+  tonerManage: 'toner.manage',
 } as const;
 
 /** Extract and verify the bearer token; throws 401 if missing/invalid. */

@@ -494,6 +494,9 @@ export const PERM = {
   serviceResolve: 'service.resolve',
   serviceReopen: 'service.reopen',
   helpdeskManage: 'helpdesk.manage',
+  tonerRead:   'toner.read',
+  tonerUpdate: 'toner.update',
+  tonerManage: 'toner.manage',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -556,5 +559,48 @@ export interface SlaAlert {
   status: 'NEW' | 'NOTIFIED' | 'ESCALATED';
   slaDueAt: string | null;
   escalatedTo: string | null;
+  createdAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Toner Management — Module 9
+// ---------------------------------------------------------------------------
+
+export interface TonerLevel {
+  printerId: number;
+  printerSerial: string;
+  printerModel: string;
+  printerBrand: string | null;
+  tonerPct: number;
+  dailyPageRate: number | null;
+  estimatedDaysRemaining: number | null;
+  lastChangeAt: string | null;
+  updatedAt: string;
+}
+
+export interface TonerShipment {
+  id: number;
+  printerId: number;
+  printerSerial: string;
+  printerModel: string;
+  consumableId: number | null;
+  consumableName: string | null;
+  status: 'PENDING' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
+  trackingRef: string | null;
+  notes: string | null;
+  shippedAt: string | null;
+  deliveredAt: string | null;
+  createdAt: string;
+  createdBy: string | null;
+}
+
+export interface TonerAlert {
+  id: number;
+  printerId: number;
+  printerSerial: string;
+  printerModel: string;
+  alertType: 'LOW_20' | 'CRITICAL_10';
+  status: 'NEW' | 'NOTIFIED' | 'SUPPRESSED';
+  tonerPct: number | null;
   createdAt: string;
 }

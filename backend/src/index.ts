@@ -18,3 +18,4 @@ import './functions/inventory';
 import './functions/dispatch';
 import './functions/field-service';
 import './functions/helpdesk';
+import './functions/toner';

@@ -21,9 +21,10 @@ import PrintersPage from './pages/PrintersPage';
 import InventoryPage from './pages/InventoryPage';
 import DispatchPage from './pages/DispatchPage';
 import HelpdeskPage from './pages/HelpdeskPage';
+import TonerPage from './pages/TonerPage';
 import { PERM } from './types';
 
-type View = 'leads' | 'customers' | 'contracts' | 'printers' | 'inventory' | 'dispatch' | 'helpdesk' | 'users' | 'audit' | 'password';
+type View = 'leads' | 'customers' | 'contracts' | 'printers' | 'inventory' | 'dispatch' | 'helpdesk' | 'toner' | 'users' | 'audit' | 'password';
 
 function Shell() {
   const { user, loading, logout, can } = useAuth();
@@ -51,6 +52,7 @@ function Shell() {
     { key: 'inventory', label: 'Inventory', show: can(PERM.inventoryRead) },
     { key: 'dispatch', label: 'Dispatch', show: can(PERM.dispatchRead) },
     { key: 'helpdesk', label: 'Helpdesk', show: can(PERM.serviceRead) },
+    { key: 'toner', label: 'Toner', show: can(PERM.tonerRead) },
     { key: 'users', label: 'Users', show: can(PERM.usersRead) },
     { key: 'audit', label: 'Audit log', show: can(PERM.auditRead) },
     { key: 'password', label: 'My password', show: true },
@@ -97,6 +99,7 @@ function Shell() {
         {activeView === 'inventory' && <InventoryPage />}
         {activeView === 'dispatch' && <DispatchPage />}
         {activeView === 'helpdesk' && <HelpdeskPage />}
+        {activeView === 'toner' && <TonerPage />}
         {activeView === 'users' && <UsersPage />}
         {activeView === 'audit' && <AuditPage />}
         {activeView === 'password' && <ChangePassword />}
