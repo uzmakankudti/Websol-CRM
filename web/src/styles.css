@@ -588,3 +588,46 @@ textarea:focus {
   color: var(--muted);
   margin-top: 0.1rem;
 }
+
+/* --- Module 5: Inventory / Warehouse Management --- */
+
+/* Tab bar for Warehouses | GRNs | Consumables */
+.tab-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 1.5rem;
+}
+.tab-btn {
+  background: none;
+  border: none;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+}
+.tab-btn:hover {
+  color: var(--text);
+}
+.tab-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+/* Low-stock badge */
+.badge-low-stock {
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px solid #fed7aa;
+}
+.badge-ok-stock {
+  background: #f0fdf4;
+  color: #166534;
+}
+
+/* Warehouse type badge */
+.badge-central { background: #dbeafe; color: #1e40af; }
+.badge-depot   { background: #f3e8ff; color: #6b21a8; }

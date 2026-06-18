@@ -33,7 +33,8 @@ Other shared modules: `db.ts`, `http.ts`, `config.ts`, `users-repo.ts`.
 - ✅ 1 — User & Access Management
 - ✅ 2 — Lead & Opportunity Management
 - ✅ 3 — Customer & Contract Management
-- ⬜ 4 — Asset / Printer Management (next)
+- ✅ 4 — Asset / Printer Management
+- ⬜ 5 — Inventory / Warehouse Management (next)
 
 ## Build rhythm
 

@@ -45,6 +45,10 @@ export const PERMISSIONS = {
   printersCreate: 'printers.create',
   printersUpdate: 'printers.update',
   printersManageStatus: 'printers.manage_status',
+  inventoryRead: 'inventory.read',
+  inventoryGrn: 'inventory.grn',
+  inventoryAdjust: 'inventory.adjust',
+  inventoryAllocate: 'inventory.allocate',
 } as const;
 
 /** Extract and verify the bearer token; throws 401 if missing/invalid. */

@@ -251,6 +251,122 @@ export interface PrinterDetail {
   allowedTransitions: PrinterStatus[];
 }
 
+// ---------------------------------------------------------------------------
+// Inventory / Warehouse Management (Module 5)
+// ---------------------------------------------------------------------------
+
+export interface Warehouse {
+  id: number;
+  code: string;
+  name: string;
+  type: 'CENTRAL' | 'DEPOT';
+  address: string | null;
+  city: string | null;
+  contactName: string | null;
+  contactPhone: string | null;
+  isActive: boolean;
+  createdBy: UserRef | null;
+  createdAt: string;
+  updatedAt: string;
+  printerCount?: number;
+  consumableLineCount?: number;
+}
+
+export interface WarehousePrinterStock {
+  id: number;
+  serialNo: string;
+  assetNo: string | null;
+  brand: string;
+  model: string;
+  status: PrinterStatus;
+  currentContractId: number | null;
+  currentContractNo: string | null;
+}
+
+export interface WarehouseConsumableStock {
+  consumableId: number;
+  sku: string;
+  name: string;
+  category: string;
+  unit: string;
+  qtyOnHand: number;
+  reorderLevel: number;
+  isLowStock: boolean;
+}
+
+export interface WarehouseDetail {
+  warehouse: Warehouse;
+  printers: WarehousePrinterStock[];
+  consumableStock: WarehouseConsumableStock[];
+}
+
+export type ConsumableCategory = 'TONER' | 'SPARE_PART' | 'PAPER' | 'OTHER';
+
+export interface Consumable {
+  id: number;
+  sku: string;
+  name: string;
+  category: ConsumableCategory;
+  unit: string;
+  reorderLevel: number;
+  description: string | null;
+  isActive: boolean;
+  createdBy: UserRef | null;
+  createdAt: string;
+  updatedAt: string;
+  totalQtyOnHand?: number;
+  isLowStock?: boolean;
+}
+
+export interface ConsumableStockLine {
+  warehouseId: number;
+  warehouseCode: string;
+  warehouseName: string;
+  qtyOnHand: number;
+  isLowStock: boolean;
+}
+
+export interface GRN {
+  id: number;
+  grnNo: string;
+  warehouseId: number;
+  warehouseName: string;
+  supplierName: string | null;
+  supplierRef: string | null;
+  receivedAt: string;
+  notes: string | null;
+  receivedBy: UserRef | null;
+  createdAt: string;
+  printerCount?: number;
+  consumableLineCount?: number;
+}
+
+export interface GRNPrinterLine {
+  id: number;
+  printerId: number;
+  serialNo: string;
+  brand: string;
+  model: string;
+  assetNo: string | null;
+  unitCost: number | null;
+}
+
+export interface GRNConsumableLine {
+  id: number;
+  consumableId: number;
+  sku: string;
+  consumableName: string;
+  unit: string;
+  quantity: number;
+  unitCost: number | null;
+}
+
+export interface GRNDetail {
+  grn: GRN;
+  printerLines: GRNPrinterLine[];
+  consumableLines: GRNConsumableLine[];
+}
+
 export interface Role {
   id: number;
   code: string;
@@ -314,4 +430,8 @@ export const PERM = {
   printersCreate: 'printers.create',
   printersUpdate: 'printers.update',
   printersManageStatus: 'printers.manage_status',
+  inventoryRead: 'inventory.read',
+  inventoryGrn: 'inventory.grn',
+  inventoryAdjust: 'inventory.adjust',
+  inventoryAllocate: 'inventory.allocate',
 } as const;
