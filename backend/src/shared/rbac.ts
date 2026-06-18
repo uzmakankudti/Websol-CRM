@@ -49,6 +49,10 @@ export const PERMISSIONS = {
   inventoryGrn: 'inventory.grn',
   inventoryAdjust: 'inventory.adjust',
   inventoryAllocate: 'inventory.allocate',
+  dispatchRead: 'dispatch.read',
+  dispatchCreate: 'dispatch.create',
+  dispatchUpdate: 'dispatch.update',
+  dispatchDeliver: 'dispatch.deliver',
 } as const;
 
 /** Extract and verify the bearer token; throws 401 if missing/invalid. */

@@ -367,6 +367,53 @@ export interface GRNDetail {
   consumableLines: GRNConsumableLine[];
 }
 
+// ---------------------------------------------------------------------------
+// Dispatch & Delivery Management (Module 6)
+// ---------------------------------------------------------------------------
+
+export type DispatchStatus = 'PENDING' | 'SCHEDULED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
+
+export interface DispatchOrderItem {
+  id: number;
+  printerId: number;
+  serialNo: string;
+  brand: string;
+  model: string;
+  assetNo: string | null;
+  printerStatus: PrinterStatus;
+  notes: string | null;
+}
+
+export interface DispatchOrder {
+  id: number;
+  orderNo: string;
+  contractId: number;
+  contractNo: string;
+  customerId: number;
+  customerName: string;
+  siteId: number | null;
+  siteName: string | null;
+  siteAddress: string | null;
+  siteCity: string | null;
+  status: DispatchStatus;
+  plannedDate: string | null;
+  courier: string | null;
+  trackingRef: string | null;
+  departedAt: string | null;
+  deliveredAt: string | null;
+  podRecipient: string | null;
+  podNotes: string | null;
+  notes: string | null;
+  createdBy: UserRef | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DispatchOrderDetail {
+  order: DispatchOrder;
+  items: DispatchOrderItem[];
+}
+
 export interface Role {
   id: number;
   code: string;
@@ -434,4 +481,8 @@ export const PERM = {
   inventoryGrn: 'inventory.grn',
   inventoryAdjust: 'inventory.adjust',
   inventoryAllocate: 'inventory.allocate',
+  dispatchRead: 'dispatch.read',
+  dispatchCreate: 'dispatch.create',
+  dispatchUpdate: 'dispatch.update',
+  dispatchDeliver: 'dispatch.deliver',
 } as const;
