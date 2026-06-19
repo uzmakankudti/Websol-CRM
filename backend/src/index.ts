@@ -19,3 +19,4 @@ import './functions/dispatch';
 import './functions/field-service';
 import './functions/helpdesk';
 import './functions/toner';
+import './functions/customer-portal';

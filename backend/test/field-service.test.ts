@@ -116,6 +116,14 @@ function ticketRow(extra: Record<string, unknown> = {}) {
     signature_image: null,
     escalated_at: null,
     escalation_reason: null,
+    // Raiser classification (migration 011)
+    raiser_type: 'EMPLOYEE',
+    raiser_party: 'INTERNAL',
+    raiser_user_id: 1,
+    raiser_contact_id: null,
+    raiser_name: 'Admin User',
+    raiser_email: 'admin@websol.local',
+    raiser_user_name: 'Admin User',
     created_by: 1,
     created_by_name: 'Admin User',
     created_at: '2026-06-18T08:00:00.000Z',
@@ -250,6 +258,137 @@ describe('createTicket', () => {
   it('returns 403 without service.create', async () => {
     const res = await createTicket(req({ token: readToken(), body: { visitType: 'CORRECTIVE', customerId: 1 } }), {} as never);
     expect(res.status).toBe(403);
+  });
+});
+
+// ===========================================================================
+// Raiser classification (migration 011)
+// ===========================================================================
+describe('Raiser classification', () => {
+  beforeEach(() => queryMock.mockReset());
+
+  function setupCreate() {
+    queryMock
+      .mockResolvedValueOnce([{ id: 1 }])                        // customer exists
+      .mockResolvedValueOnce([{ cnt: 0 }])                       // COUNT for ticket_no
+      .mockResolvedValueOnce({ insertId: 100, affectedRows: 1 }) // INSERT ticket
+      .mockResolvedValueOnce({ affectedRows: 1 })                // INSERT history
+      .mockResolvedValueOnce({ affectedRows: 1 })                // writeAudit
+      .mockResolvedValueOnce([ticketRow()]);                     // findTicket
+  }
+
+  function insertParams(): unknown[] {
+    const call = queryMock.mock.calls.find(([s]) => /INSERT INTO service_tickets/i.test(String(s)));
+    return call ? (call[1] as unknown[]) : [];
+  }
+
+  it('defaults to EMPLOYEE / INTERNAL when raiserType is omitted', async () => {
+    setupCreate();
+    await createTicket(
+      req({ token: adminToken(), body: { visitType: 'CORRECTIVE', customerId: 1 } }),
+      {} as never,
+    );
+    const p = insertParams();
+    // raiser_type is the 16th param (index 15), raiser_party is index 16
+    expect(p[15]).toBe('EMPLOYEE');
+    expect(p[16]).toBe('INTERNAL');
+  });
+
+  it('records the caller\'s userId as raiser_user_id for EMPLOYEE raiser', async () => {
+    setupCreate();
+    await createTicket(
+      req({ token: adminToken(), body: { visitType: 'CORRECTIVE', customerId: 1 } }),
+      {} as never,
+    );
+    const p = insertParams();
+    // raiser_user_id is index 17; adminToken sub = 1
+    expect(p[17]).toBe(1);
+  });
+
+  it('accepts an explicit raiser_user_id for EMPLOYEE raiser', async () => {
+    setupCreate();
+    await createTicket(
+      req({ token: adminToken(), body: { visitType: 'CORRECTIVE', customerId: 1, raiserType: 'EMPLOYEE', raiserUserId: 42 } }),
+      {} as never,
+    );
+    const p = insertParams();
+    expect(p[15]).toBe('EMPLOYEE');
+    expect(p[17]).toBe(42);
+  });
+
+  it('CUSTOMER raiser with name returns 201 and sets raiser_type=CUSTOMER', async () => {
+    setupCreate();
+    const res = await createTicket(
+      req({ token: adminToken(), body: { visitType: 'CORRECTIVE', customerId: 1, raiserType: 'CUSTOMER', raiserName: 'Jane Smith', raiserEmail: 'jane@client.com' } }),
+      {} as never,
+    );
+    expect(res.status).toBe(201);
+    const p = insertParams();
+    expect(p[15]).toBe('CUSTOMER');
+    expect(p[16]).toBe('EXTERNAL');
+    expect(p[19]).toBe('Jane Smith');
+    expect(p[20]).toBe('jane@client.com');
+  });
+
+  it('CUSTOMER raiser without raiserName returns 400 RAISER_NAME_REQUIRED', async () => {
+    const res = await createTicket(
+      req({ token: adminToken(), body: { visitType: 'CORRECTIVE', customerId: 1, raiserType: 'CUSTOMER' } }),
+      {} as never,
+    );
+    expect(res.status).toBe(400);
+    expect(errCode(res)).toBe('RAISER_NAME_REQUIRED');
+    // No DB queries should have been made before this validation fires
+    expect(queryMock).not.toHaveBeenCalled();
+  });
+
+  it('allows overriding raiserParty to EXTERNAL for an EMPLOYEE', async () => {
+    setupCreate();
+    await createTicket(
+      req({ token: adminToken(), body: { visitType: 'CORRECTIVE', customerId: 1, raiserType: 'EMPLOYEE', raiserParty: 'EXTERNAL' } }),
+      {} as never,
+    );
+    const p = insertParams();
+    expect(p[15]).toBe('EMPLOYEE');
+    expect(p[16]).toBe('EXTERNAL');
+  });
+
+  it('listTickets applies raiserType=CUSTOMER filter', async () => {
+    queryMock.mockResolvedValueOnce([]);
+    const res = await listTickets(
+      req({ token: adminToken(), query: { raiserType: 'CUSTOMER' } }),
+      {} as never,
+    );
+    expect(res.status).toBe(200);
+    const [sql, params] = queryMock.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('raiser_type');
+    expect(params).toContain('CUSTOMER');
+  });
+
+  it('listTickets with raiserType=EMPLOYEE filters correctly', async () => {
+    queryMock.mockResolvedValueOnce([ticketRow()]);
+    const res = await listTickets(
+      req({ token: adminToken(), query: { raiserType: 'EMPLOYEE' } }),
+      {} as never,
+    );
+    expect(res.status).toBe(200);
+    const tickets = (res.jsonBody as { tickets: unknown[] }).tickets;
+    expect(tickets).toHaveLength(1);
+    const [, params] = queryMock.mock.calls[0] as [string, unknown[]];
+    expect(params).toContain('EMPLOYEE');
+  });
+
+  it('returned ticket shape includes raiser block', async () => {
+    setupCreate();
+    const res = await createTicket(
+      req({ token: adminToken(), body: { visitType: 'CORRECTIVE', customerId: 1, raiserName: 'System', raiserEmail: 'sys@websol.local' } }),
+      {} as never,
+    );
+    expect(res.status).toBe(201);
+    const ticket = (res.jsonBody as { ticket: Record<string, unknown> }).ticket;
+    expect(ticket).toHaveProperty('raiser');
+    const raiser = ticket.raiser as Record<string, unknown>;
+    expect(raiser.type).toBe('EMPLOYEE');
+    expect(raiser.party).toBe('INTERNAL');
   });
 });
 

@@ -15,7 +15,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "seed": "DB_HOST=localhost DB_USER=websol DB_PASSWORD=Websol@Local123 DB_NAME=websol_crm npx tsx src/seed.ts",
+    "check": "npm run lint && npm run test"
   },
   "dependencies": {
     "@azure/functions": "^4.5.0",

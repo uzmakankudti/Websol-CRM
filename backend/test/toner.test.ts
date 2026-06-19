@@ -671,3 +671,274 @@ describe('processTonerLevels — scheduled toner alert scanner', () => {
     expect(String(critical10Select[0])).toMatch(/toner_pct\s*<=\s*10/i);
   });
 });
+
+// ===========================================================================
+// BR-017 — boundary cases and edge conditions
+// ===========================================================================
+describe('BR-017 — boundary and edge cases', () => {
+  beforeEach(() => queryMock.mockReset());
+
+  it('11% toner: inserts LOW_20 but NOT CRITICAL_10 (boundary above critical threshold)', async () => {
+    queryMock
+      .mockResolvedValueOnce({ affectedRows: 1 })  // UPSERT
+      .mockResolvedValueOnce({ affectedRows: 1 })  // INSERT LOW_20  (11 ≤ 20)
+      .mockResolvedValueOnce({ affectedRows: 1 }); // writeAudit     (11 > 10 → no CRITICAL_10)
+
+    await updateTonerLevel(
+      req({ token: techToken(), params: { id: '10' }, body: { tonerPct: 11 } }),
+      {} as never,
+    );
+
+    const low20 = queryMock.mock.calls.find(
+      ([s]) => /LOW_20/i.test(String(s)) && /INSERT/i.test(String(s)),
+    );
+    const crit = queryMock.mock.calls.find(
+      ([s]) => /CRITICAL_10/i.test(String(s)) && /INSERT/i.test(String(s)),
+    );
+    expect(low20).toBeDefined();
+    expect(crit).toBeUndefined();
+  });
+
+  it('0% toner: inserts both LOW_20 and CRITICAL_10 (extreme edge)', async () => {
+    queryMock
+      .mockResolvedValueOnce({ affectedRows: 1 })  // UPSERT
+      .mockResolvedValueOnce({ affectedRows: 1 })  // INSERT LOW_20
+      .mockResolvedValueOnce({ affectedRows: 1 })  // INSERT CRITICAL_10
+      .mockResolvedValueOnce({ affectedRows: 1 }); // writeAudit
+
+    const res = await updateTonerLevel(
+      req({ token: techToken(), params: { id: '10' }, body: { tonerPct: 0 } }),
+      {} as never,
+    );
+    expect(res.status).toBe(200);
+
+    const alertInserts = queryMock.mock.calls.filter(
+      ([s]) => /INSERT.*toner_alerts/i.test(String(s)),
+    );
+    expect(alertInserts).toHaveLength(2);
+  });
+
+  it('alert INSERTs use INSERT IGNORE so duplicate readings never create duplicate rows', async () => {
+    queryMock
+      .mockResolvedValueOnce({ affectedRows: 1 })
+      .mockResolvedValueOnce({ affectedRows: 0 })  // already existed — ignored
+      .mockResolvedValueOnce({ affectedRows: 1 });
+
+    await updateTonerLevel(
+      req({ token: techToken(), params: { id: '10' }, body: { tonerPct: 15 } }),
+      {} as never,
+    );
+
+    const alertInsert = queryMock.mock.calls.find(
+      ([s]) => /INSERT.*toner_alerts/i.test(String(s)),
+    );
+    expect(String(alertInsert![0])).toMatch(/INSERT IGNORE/i);
+  });
+
+  it('suppress succeeds when no toner level is recorded for the printer yet', async () => {
+    // No row in printer_toner_levels → level undefined → guard `if (level && ...)` is false
+    queryMock
+      .mockResolvedValueOnce([{ id: 5, printer_id: 20, alert_type: 'LOW_20', status: 'NEW' }])
+      .mockResolvedValueOnce([])                   // level SELECT returns empty (no reading)
+      .mockResolvedValueOnce({ affectedRows: 1 })  // UPDATE SUPPRESSED
+      .mockResolvedValueOnce({ affectedRows: 1 }); // writeAudit
+
+    const res = await suppressAlert(
+      req({ token: csrToken(), params: { id: '5' } }),
+      {} as never,
+    );
+    expect(res.status).toBe(200);
+    expect((res.jsonBody as { suppressed: boolean }).suppressed).toBe(true);
+  });
+
+  it('a CRITICAL_10 alert can be suppressed once the printer is restocked above 10%', async () => {
+    // Alert was raised when toner was critical; toner is now 45% after partial refill
+    queryMock
+      .mockResolvedValueOnce([{ id: 7, printer_id: 10, alert_type: 'CRITICAL_10', status: 'NEW' }])
+      .mockResolvedValueOnce([{ toner_pct: 45 }])  // printer now well above 10%
+      .mockResolvedValueOnce({ affectedRows: 1 })
+      .mockResolvedValueOnce({ affectedRows: 1 });
+
+    const res = await suppressAlert(
+      req({ token: csrToken(), params: { id: '7' } }),
+      {} as never,
+    );
+    expect(res.status).toBe(200);
+  });
+});
+
+// ===========================================================================
+// BR-016 — additional shipment lifecycle cases
+// ===========================================================================
+describe('BR-016 — shipment lifecycle', () => {
+  beforeEach(() => queryMock.mockReset());
+
+  it('a DELIVERED shipment does not block creating a new one for the same printer', async () => {
+    // SELECT for active returns [] because DELIVERED/CANCELLED are excluded
+    queryMock
+      .mockResolvedValueOnce([])                                    // no PENDING/IN_TRANSIT
+      .mockResolvedValueOnce({ insertId: 55, affectedRows: 1 })    // INSERT
+      .mockResolvedValueOnce({ affectedRows: 1 });                  // writeAudit
+
+    const res = await createTonerShipment(
+      req({ token: csrToken(), body: { printerId: 10 } }),
+      {} as never,
+    );
+    expect(res.status).toBe(201);
+    const body = res.jsonBody as { id: number };
+    expect(body.id).toBe(55);
+  });
+
+  it('stores created_by (auth userId) in the INSERT params', async () => {
+    queryMock
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce({ insertId: 60, affectedRows: 1 })
+      .mockResolvedValueOnce({ affectedRows: 1 });
+
+    await createTonerShipment(
+      req({ token: csrToken(), body: { printerId: 10 } }),
+      {} as never,
+    );
+
+    const insert = queryMock.mock.calls.find(
+      ([s]) => /INSERT INTO toner_shipments/i.test(String(s)),
+    );
+    const params = insert![1] as unknown[];
+    // params: [printer_id, consumable_id, tracking_ref, notes, created_by]
+    expect(params[4]).toBe(5);  // csrToken sub = 5
+  });
+});
+
+// ===========================================================================
+// Offline consumption estimate — formula edge cases
+// ===========================================================================
+describe('Offline consumption estimate — formula edge cases', () => {
+  beforeEach(() => queryMock.mockReset());
+
+  it('full cartridge (100%) at 50 pages/day = 100 days remaining', async () => {
+    // (100/100) * 5000 / 50 = 100
+    queryMock
+      .mockResolvedValueOnce({ affectedRows: 1 })
+      .mockResolvedValueOnce({ affectedRows: 1 });
+
+    const res = await updateTonerLevel(
+      req({ token: techToken(), params: { id: '10' }, body: { tonerPct: 100, dailyPageRate: 50 } }),
+      {} as never,
+    );
+    const body = res.jsonBody as { estimatedDaysRemaining: number };
+    expect(body.estimatedDaysRemaining).toBe(100);
+  });
+
+  it('1% toner at 100 pages/day rounds to 1 day (Math.round(0.5) = 1)', async () => {
+    // (1/100) * 5000 / 100 = 0.5 → Math.round(0.5) = 1
+    queryMock
+      .mockResolvedValueOnce({ affectedRows: 1 })
+      .mockResolvedValueOnce({ affectedRows: 1 })  // LOW_20
+      .mockResolvedValueOnce({ affectedRows: 1 })  // CRITICAL_10
+      .mockResolvedValueOnce({ affectedRows: 1 }); // writeAudit
+
+    const res = await updateTonerLevel(
+      req({ token: techToken(), params: { id: '10' }, body: { tonerPct: 1, dailyPageRate: 100 } }),
+      {} as never,
+    );
+    const body = res.jsonBody as { estimatedDaysRemaining: number };
+    expect(body.estimatedDaysRemaining).toBe(1);
+  });
+
+  it('dailyPageRate = 0 returns null (guard against divide-by-zero)', async () => {
+    queryMock
+      .mockResolvedValueOnce({ affectedRows: 1 })
+      .mockResolvedValueOnce({ affectedRows: 1 });
+
+    const res = await updateTonerLevel(
+      req({ token: techToken(), params: { id: '10' }, body: { tonerPct: 50, dailyPageRate: 0 } }),
+      {} as never,
+    );
+    const body = res.jsonBody as { estimatedDaysRemaining: number | null };
+    expect(body.estimatedDaysRemaining).toBeNull();
+  });
+
+  it('negative dailyPageRate returns null (nonsensical input rejected)', async () => {
+    queryMock
+      .mockResolvedValueOnce({ affectedRows: 1 })
+      .mockResolvedValueOnce({ affectedRows: 1 });
+
+    const res = await updateTonerLevel(
+      req({ token: techToken(), params: { id: '10' }, body: { tonerPct: 50, dailyPageRate: -10 } }),
+      {} as never,
+    );
+    const body = res.jsonBody as { estimatedDaysRemaining: number | null };
+    expect(body.estimatedDaysRemaining).toBeNull();
+  });
+});
+
+// ===========================================================================
+// Delivery-reset — parameter and target correctness
+// ===========================================================================
+describe('Delivery-reset — parameter and target correctness', () => {
+  beforeEach(() => queryMock.mockReset());
+
+  it('UPDATE shipment binds delivered_at (now) as first param and shipment id last', async () => {
+    queryMock
+      .mockResolvedValueOnce([{ id: 10, printer_id: 5, status: 'IN_TRANSIT' }])
+      .mockResolvedValueOnce({ affectedRows: 1 })  // UPDATE delivered_at
+      .mockResolvedValueOnce({ affectedRows: 1 })  // UPSERT toner_levels
+      .mockResolvedValueOnce({ affectedRows: 1 })  // DELETE alerts
+      .mockResolvedValueOnce({ affectedRows: 1 }); // writeAudit
+
+    await updateShipmentStatus(
+      req({ token: adminToken(), params: { id: '10' }, body: { status: 'DELIVERED' } }),
+      {} as never,
+    );
+
+    const deliveryUpd = queryMock.mock.calls.find(
+      ([s]) => /UPDATE toner_shipments.*DELIVERED/i.test(String(s)),
+    );
+    expect(deliveryUpd).toBeDefined();
+    const params = deliveryUpd![1] as unknown[];
+    // params: [delivered_at (now string), updated_by, id]
+    expect(typeof params[0]).toBe('string');          // delivered_at timestamp
+    expect(params[2]).toBe(10);                        // WHERE id = 10
+  });
+
+  it('alert DELETE targets printer_id from the shipment, not a hard-coded id', async () => {
+    queryMock
+      .mockResolvedValueOnce([{ id: 99, printer_id: 42, status: 'PENDING' }])
+      .mockResolvedValueOnce({ affectedRows: 1 })
+      .mockResolvedValueOnce({ affectedRows: 1 })
+      .mockResolvedValueOnce({ affectedRows: 2 })
+      .mockResolvedValueOnce({ affectedRows: 1 });
+
+    await updateShipmentStatus(
+      req({ token: adminToken(), params: { id: '99' }, body: { status: 'DELIVERED' } }),
+      {} as never,
+    );
+
+    const del = queryMock.mock.calls.find(
+      ([s]) => /DELETE FROM toner_alerts/i.test(String(s)),
+    );
+    expect(del).toBeDefined();
+    expect((del![1] as unknown[])[0]).toBe(42);  // printer_id = 42, not 99 (the shipment id)
+  });
+
+  it('UPSERT toner_levels binds updated_by from the auth context', async () => {
+    queryMock
+      .mockResolvedValueOnce([{ id: 10, printer_id: 5, status: 'IN_TRANSIT' }])
+      .mockResolvedValueOnce({ affectedRows: 1 })
+      .mockResolvedValueOnce({ affectedRows: 1 })
+      .mockResolvedValueOnce({ affectedRows: 1 })
+      .mockResolvedValueOnce({ affectedRows: 1 });
+
+    await updateShipmentStatus(
+      req({ token: adminToken(), params: { id: '10' }, body: { status: 'DELIVERED' } }),
+      {} as never,
+    );
+
+    const upsert = queryMock.mock.calls.find(
+      ([s]) => /INSERT INTO printer_toner_levels/i.test(String(s)),
+    );
+    const params = upsert![1] as unknown[];
+    // params: [printer_id, last_change_at (now), updated_by]
+    expect(params[2]).toBe(1);  // adminToken sub = 1
+  });
+});

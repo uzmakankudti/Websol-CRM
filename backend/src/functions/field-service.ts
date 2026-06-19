@@ -74,6 +74,14 @@ interface TicketRow extends RowDataPacket {
   sla_tier: string | null;
   issue_category_id: number | null;
   issue_category_name: string | null;
+  // Raiser classification (added by migration 011)
+  raiser_type: string;
+  raiser_party: string;
+  raiser_user_id: number | null;
+  raiser_contact_id: number | null;
+  raiser_name: string | null;
+  raiser_email: string | null;
+  raiser_user_name: string | null;
   reopen_count: number;
   last_resolved_at: string | null;
   scheduled_date: string | null;
@@ -107,6 +115,9 @@ const VISIT_TYPES = [
 ] as const;
 
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
+
+const RAISER_TYPES  = ['EMPLOYEE', 'CUSTOMER'] as const;
+const RAISER_PARTIES = ['INTERNAL', 'EXTERNAL'] as const;
 
 /** SLA response window (hours) by priority — fallback when no contract tier is supplied. */
 const SLA_HOURS: Record<string, number> = { CRITICAL: 4, HIGH: 8, MEDIUM: 24, LOW: 72 };
@@ -154,7 +165,8 @@ const TICKET_SELECT = `
          au.full_name AS assigned_to_name,
          eu.full_name AS escalated_to_name,
          cb.full_name AS created_by_name,
-         cat.name AS issue_category_name
+         cat.name AS issue_category_name,
+         ru.full_name AS raiser_user_name
     FROM service_tickets t
     JOIN customers cu        ON cu.id = t.customer_id
     LEFT JOIN customer_sites s ON s.id  = t.site_id
@@ -163,7 +175,8 @@ const TICKET_SELECT = `
     LEFT JOIN users au         ON au.id = t.assigned_to
     LEFT JOIN users eu         ON eu.id = t.escalated_to
     LEFT JOIN users cb         ON cb.id = t.created_by
-    LEFT JOIN helpdesk_issue_categories cat ON cat.id = t.issue_category_id`;
+    LEFT JOIN helpdesk_issue_categories cat ON cat.id = t.issue_category_id
+    LEFT JOIN users ru         ON ru.id = t.raiser_user_id`;
 
 async function findTicket(id: number): Promise<TicketRow | null> {
   const rows = await query<TicketRow[]>(`${TICKET_SELECT} WHERE t.id = ? LIMIT 1`, [id]);
@@ -214,6 +227,15 @@ function toTicketPublic(row: TicketRow) {
     escalatedAt: row.escalated_at,
     escalationReason: row.escalation_reason,
     createdBy: row.created_by ? { id: row.created_by, fullName: row.created_by_name } : null,
+    raiser: {
+      type: (row.raiser_type as string) ?? 'EMPLOYEE',
+      party: (row.raiser_party as string) ?? 'INTERNAL',
+      userId: row.raiser_user_id ?? null,
+      contactId: row.raiser_contact_id ?? null,
+      name: row.raiser_name ?? null,
+      email: row.raiser_email ?? null,
+      displayName: row.raiser_user_name ?? row.raiser_name ?? null,
+    },
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -586,6 +608,9 @@ export const listTickets = handle(async (request: HttpRequest): Promise<HttpResp
     params.push(`%${q}%`, `%${q}%`);
   }
 
+  const raiserType = request.query.get('raiserType');
+  if (raiserType) { where.push('t.raiser_type = ?'); params.push(raiserType.toUpperCase()); }
+
   const rows = await query<TicketRow[]>(
     `${TICKET_SELECT}
       ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
@@ -717,6 +742,35 @@ export const createTicket = handle(async (request: HttpRequest): Promise<HttpRes
   const issueCategoryId = body.issueCategoryId != null ? Number(body.issueCategoryId) : null;
   const autoAssign = !!body.autoAssign;
 
+  // Raiser classification (migration 011).
+  const raiserTypeRaw = String(body.raiserType ?? '').trim().toUpperCase();
+  const raiserType: string = RAISER_TYPES.includes(raiserTypeRaw as (typeof RAISER_TYPES)[number])
+    ? raiserTypeRaw
+    : 'EMPLOYEE';
+  const defaultParty = raiserType === 'EMPLOYEE' ? 'INTERNAL' : 'EXTERNAL';
+  const raiserPartyRaw = String(body.raiserParty ?? '').trim().toUpperCase();
+  const raiserParty: string = RAISER_PARTIES.includes(raiserPartyRaw as (typeof RAISER_PARTIES)[number])
+    ? raiserPartyRaw
+    : defaultParty;
+
+  let raiserUserId: number | null = null;
+  let raiserContactId: number | null = null;
+  let raiserName: string | null = null;
+  let raiserEmail: string | null = null;
+
+  if (raiserType === 'EMPLOYEE') {
+    raiserUserId = body.raiserUserId != null ? Number(body.raiserUserId) : ctx.userId;
+    raiserName   = str(body.raiserName);
+    raiserEmail  = str(body.raiserEmail) ?? ctx.email;
+  } else {
+    raiserName = str(body.raiserName);
+    if (!raiserName) {
+      return error(400, 'raiserName is required when raiserType is CUSTOMER', 'RAISER_NAME_REQUIRED');
+    }
+    raiserContactId = body.raiserContactId != null ? Number(body.raiserContactId) : null;
+    raiserEmail     = str(body.raiserEmail);
+  }
+
   // Verify customer exists.
   const [customer] = await query<RowDataPacket[]>(`SELECT id FROM customers WHERE id = ? LIMIT 1`, [customerId]);
   if (!customer) return error(404, 'Customer not found');
@@ -773,14 +827,18 @@ export const createTicket = handle(async (request: HttpRequest): Promise<HttpRes
   const result = await query<ResultSetHeader>(
     `INSERT INTO service_tickets
        (ticket_no, visit_type, priority, status, customer_id, site_id, contract_id, printer_id,
-        assigned_to, description, scheduled_date, sla_due_at, source, sla_tier, issue_category_id, created_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        assigned_to, description, scheduled_date, sla_due_at, source, sla_tier, issue_category_id,
+        raiser_type, raiser_party, raiser_user_id, raiser_contact_id, raiser_name, raiser_email,
+        created_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       ticketNo, visitType, priority, startStatus, customerId,
       siteId, contractId,
       body.printerId != null ? Number(body.printerId) : null,
       assignedTo, str(body.description), str(body.scheduledDate), slaDueAt,
-      source, slaTier, issueCategoryId, ctx.userId,
+      source, slaTier, issueCategoryId,
+      raiserType, raiserParty, raiserUserId, raiserContactId, raiserName, raiserEmail,
+      ctx.userId,
     ],
   );
   const newId = result.insertId;
@@ -794,7 +852,7 @@ export const createTicket = handle(async (request: HttpRequest): Promise<HttpRes
   await writeAudit({
     actorUserId: ctx.userId, actorEmail: ctx.email,
     entityType: 'service_ticket', entityId: newId, action: 'create',
-    changes: { after: { ticketNo, visitType, priority, customerId, assignedTo } }, ipAddress: clientIp(request),
+    changes: { after: { ticketNo, visitType, priority, customerId, assignedTo, raiserType, raiserParty } }, ipAddress: clientIp(request),
   });
 
   const created = await findTicket(newId);

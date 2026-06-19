@@ -7,7 +7,7 @@
  * keeps "each role sees only what it should" data-driven.
  */
 import { HttpRequest } from '@azure/functions';
-import { verifyToken, TokenPayload } from './auth';
+import { verifyToken, verifyCustomerToken, TokenPayload } from './auth';
 import { HttpError } from './http';
 
 export interface AuthContext {
@@ -15,6 +15,18 @@ export interface AuthContext {
   email: string;
   role: string;
   perms: string[];
+}
+
+/**
+ * A logged-in customer-portal session. Deliberately has NO `perms` — a
+ * customer can never satisfy `requirePermission`, so staff endpoints are
+ * closed to them. `customerId` is the only company whose data they may read,
+ * and it comes from the signed token, never from the request.
+ */
+export interface CustomerContext {
+  contactId: number;
+  customerId: number;
+  email: string;
 }
 
 /** Permission codes used across this module (kept in sync with migrations 002–003). */
@@ -86,4 +98,22 @@ export function requirePermission(ctx: AuthContext, permission: string): void {
   if (!ctx.perms.includes(permission)) {
     throw new HttpError(403, 'You do not have permission to perform this action', 'FORBIDDEN');
   }
+}
+
+/**
+ * Validate a customer-portal bearer token and return the customer session.
+ * Throws 401 if missing/invalid, or if a *staff* token is presented here —
+ * staff tokens are not `aud:'customer'` and are rejected by design.
+ */
+export function requireCustomer(request: HttpRequest): CustomerContext {
+  const header = request.headers.get('authorization') ?? '';
+  const match = /^Bearer\s+(.+)$/i.exec(header);
+  if (!match) {
+    throw new HttpError(401, 'Customer sign-in required', 'UNAUTHENTICATED');
+  }
+  const payload = verifyCustomerToken(match[1]);
+  if (!payload) {
+    throw new HttpError(401, 'Session expired or invalid; please sign in again', 'UNAUTHENTICATED');
+  }
+  return { contactId: payload.sub, customerId: payload.cid, email: payload.email };
 }
