@@ -12,6 +12,7 @@
     "test:backend": "npm --prefix backend test",
     "test": "npm run test:backend",
     "check": "npm run lint && npm test",
+    "seed": "npm --prefix backend run seed",
     "install:all": "npm install && npm --prefix backend install && npm --prefix web install"
   },
   "devDependencies": {
