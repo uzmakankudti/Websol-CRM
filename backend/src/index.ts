@@ -20,3 +20,4 @@ import './functions/field-service';
 import './functions/helpdesk';
 import './functions/toner';
 import './functions/customer-portal';
+import './functions/billing';

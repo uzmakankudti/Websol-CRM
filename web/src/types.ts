@@ -497,7 +497,100 @@ export const PERM = {
   tonerRead:   'toner.read',
   tonerUpdate: 'toner.update',
   tonerManage: 'toner.manage',
+  billingRead:   'billing.read',
+  billingCreate: 'billing.create',
+  billingIssue:  'billing.issue',
+  billingPay:    'billing.pay',
+  billingCredit: 'billing.credit',
 } as const;
+
+// ---------------------------------------------------------------------------
+// Billing & Invoice Management — Module 14
+// ---------------------------------------------------------------------------
+
+export type InvoiceStatus = 'DRAFT' | 'ISSUED' | 'PAID' | 'OVERDUE' | 'VOID';
+export type CreditNoteStatus = 'DRAFT' | 'ISSUED' | 'VOID';
+
+export interface InvoiceSummary {
+  id: number;
+  invoiceNo: string;
+  contractId: number;
+  contractNo: string;
+  customerId: number;
+  customerName: string;
+  periodStart: string;
+  periodEnd: string;
+  total: string;
+  amountPaid: string;
+  amountCredited: string;
+  balance: string;
+  status: InvoiceStatus;
+  dueDate: string | null;
+  issuedAt: string | null;
+  paidAt: string | null;
+}
+
+export interface InvoiceLine {
+  id: number;
+  printerId: number;
+  serialNo: string;
+  model: string;
+  openingBw: number;
+  closingBw: number;
+  deltaBw: number;
+  openingColour: number | null;
+  closingColour: number | null;
+  deltaColour: number | null;
+  allowanceBw: number;
+  allowanceColour: number | null;
+  basePagesBy: number;
+  overagePagesBy: number;
+  basePagesColour: number | null;
+  overagePagesColour: number | null;
+  rateBw: string;
+  rateColour: string;
+  overageRateBw: string;
+  overageRateColour: string;
+  amountBw: string;
+  amountColour: string;
+  amountOverageBw: string;
+  amountOverageColour: string;
+  lineTotal: string;
+}
+
+export interface Invoice extends InvoiceSummary {
+  billingEmail: string | null;
+  periodDays: number;
+  actualDays: number;
+  leaseFeeFull: string;
+  leaseFeeProrated: string;
+  clicksBwAmount: string;
+  clicksColourAmount: string;
+  overageBwAmount: string;
+  overageColourAmount: string;
+  subtotal: string;
+  taxRate: string;
+  taxAmount: string;
+  voidedAt: string | null;
+  voidReason: string | null;
+  oracleRef: string | null;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface CreditNote {
+  id: number;
+  creditNo: string;
+  invoiceId: number;
+  invoiceNo: string;
+  customerId: number;
+  customerName: string;
+  amount: string;
+  reason: string;
+  status: CreditNoteStatus;
+  issuedAt: string | null;
+  createdAt: string;
+}
 
 // ---------------------------------------------------------------------------
 // Service Ticket Management — Module 8 (Helpdesk)
