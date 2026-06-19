@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { useAuth } from '../auth/context';
-import { PERM, type IssueCategory, type ServiceTicket, type SlaAlert, type TicketPriority, type TicketSource } from '../types';
+import { PERM, type IssueCategory, type RaiserParty, type RaiserType, type ServiceTicket, type SlaAlert, type TicketPriority, type TicketSource } from '../types';
 
 // ---------------------------------------------------------------------------
 // SLA countdown helper
@@ -76,6 +76,7 @@ export default function HelpdeskPage() {
   const [notice, setNotice] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
+  const [raiserTypeFilter, setRaiserTypeFilter] = useState('');
   const [creating, setCreating] = useState(false);
   const [selected, setSelected] = useState<ServiceTicket | null>(null);
 
@@ -86,6 +87,7 @@ export default function HelpdeskPage() {
       const params = new URLSearchParams();
       if (statusFilter) params.set('status', statusFilter);
       if (sourceFilter) params.set('source', sourceFilter);
+      if (raiserTypeFilter) params.set('raiserType', raiserTypeFilter);
       const [ticketData, alertData, catData] = await Promise.all([
         api.get<{ tickets: ServiceTicket[] }>(`/service-tickets?${params.toString()}`),
         can(PERM.serviceRead) ? api.get<{ alerts: SlaAlert[] }>('/helpdesk/sla-alerts?alertType=BREACH') : Promise.resolve({ alerts: [] }),
@@ -99,7 +101,7 @@ export default function HelpdeskPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, sourceFilter, can]);
+  }, [statusFilter, sourceFilter, raiserTypeFilter, can]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -157,6 +159,11 @@ export default function HelpdeskPage() {
           <option value='PORTAL'>Portal</option>
           <option value='EMAIL'>Email</option>
         </select>
+        <select value={raiserTypeFilter} onChange={(e) => setRaiserTypeFilter(e.target.value)} style={{ padding: '4px 8px' }}>
+          <option value=''>All raiser types</option>
+          <option value='EMPLOYEE'>Employee</option>
+          <option value='CUSTOMER'>Customer</option>
+        </select>
       </div>
 
       {err && <p style={{ color: 'red' }}>{err}</p>}
@@ -170,6 +177,7 @@ export default function HelpdeskPage() {
                 <th style={{ padding: '6px 8px' }}>Category</th>
                 <th style={{ padding: '6px 8px' }}>Priority</th>
                 <th style={{ padding: '6px 8px' }}>Source</th>
+                <th style={{ padding: '6px 8px' }}>Raised By</th>
                 <th style={{ padding: '6px 8px' }}>Status</th>
                 <th style={{ padding: '6px 8px' }}>SLA</th>
                 <th style={{ padding: '6px 8px' }}>Tier</th>
@@ -192,6 +200,13 @@ export default function HelpdeskPage() {
                     </td>
                     <td style={{ padding: '6px 8px' }}>
                       <Badge text={t.source} color={SOURCE_COLORS[t.source] ?? '#555'} />
+                    </td>
+                    <td style={{ padding: '6px 8px' }}>
+                      <span style={{ fontSize: '0.75rem' }}>
+                        {t.raiser?.displayName ?? t.raiser?.name ?? '—'}
+                        <br />
+                        <span style={{ color: '#888' }}>{t.raiser?.type ?? ''}</span>
+                      </span>
                     </td>
                     <td style={{ padding: '6px 8px' }}>{t.status.replace(/_/g, ' ')}</td>
                     <td style={{ padding: '6px 8px', fontWeight: 600, color: sla.color }}>{sla.label}</td>
@@ -235,6 +250,10 @@ function NewTicketModal({
   const [categoryId, setCategoryId] = useState('');
   const [autoAssign, setAutoAssign] = useState(false);
   const [description, setDescription] = useState('');
+  const [raiserType, setRaiserType] = useState<RaiserType>('EMPLOYEE');
+  const [raiserParty, setRaiserParty] = useState<RaiserParty>('INTERNAL');
+  const [raiserName, setRaiserName] = useState('');
+  const [raiserEmail, setRaiserEmail] = useState('');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
@@ -247,6 +266,10 @@ function NewTicketModal({
         visitType, priority, source, customerId: Number(customerId),
         description: description || undefined,
         autoAssign,
+        raiserType,
+        raiserParty,
+        raiserName: raiserName || undefined,
+        raiserEmail: raiserEmail || undefined,
       };
       if (contractId) body.contractId = Number(contractId);
       if (siteId) body.siteId = Number(siteId);
@@ -320,6 +343,37 @@ function NewTicketModal({
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} style={{ width: '100%', resize: 'vertical' }} />
         </label>
 
+        <fieldset style={{ border: '1px solid #ddd', borderRadius: 4, padding: '8px 12px', marginTop: 12 }}>
+          <legend style={{ fontSize: '0.85rem', fontWeight: 600 }}>Raised by</legend>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <label>Raiser type<br />
+              <select value={raiserType} onChange={(e) => {
+                const t = e.target.value as RaiserType;
+                setRaiserType(t);
+                setRaiserParty(t === 'EMPLOYEE' ? 'INTERNAL' : 'EXTERNAL');
+              }} style={{ width: '100%' }}>
+                <option value='EMPLOYEE'>Employee</option>
+                <option value='CUSTOMER'>Customer</option>
+              </select>
+            </label>
+            <label>Raiser party<br />
+              <select value={raiserParty} onChange={(e) => setRaiserParty(e.target.value as RaiserParty)} style={{ width: '100%' }}>
+                <option value='INTERNAL'>Internal</option>
+                <option value='EXTERNAL'>External</option>
+              </select>
+            </label>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+            <label>{raiserType === 'CUSTOMER' ? 'Customer name *' : 'Name (optional)'}<br />
+              <input value={raiserName} onChange={(e) => setRaiserName(e.target.value)}
+                required={raiserType === 'CUSTOMER'} style={{ width: '100%' }} placeholder={raiserType === 'CUSTOMER' ? 'required' : 'leave blank to use own'} />
+            </label>
+            <label>Email (optional)<br />
+              <input type='email' value={raiserEmail} onChange={(e) => setRaiserEmail(e.target.value)} style={{ width: '100%' }} />
+            </label>
+          </div>
+        </fieldset>
+
         {err && <p style={{ color: 'red', margin: '8px 0 0' }}>{err}</p>}
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
@@ -384,6 +438,14 @@ function TicketDetailPane({
         <Row label='Category'>{ticket.issueCategory?.name ?? '—'}</Row>
         <Row label='Assigned to'>{ticket.assignedTo?.fullName ?? '—'}</Row>
         <Row label='SLA due'>{ticket.slaDueAt ?? '—'}</Row>
+        <Row label='Raised by'>
+          {ticket.raiser?.displayName ?? ticket.raiser?.name ?? '—'}
+          {' '}
+          <span style={{ color: '#888', fontSize: '0.8rem' }}>
+            {ticket.raiser ? `(${ticket.raiser.type} / ${ticket.raiser.party})` : ''}
+          </span>
+        </Row>
+        {ticket.raiser?.email && <Row label='Raiser email'>{ticket.raiser.email}</Row>}
         {ticket.resolutionNotes && <Row label='Resolution'>{ticket.resolutionNotes}</Row>}
         {ticket.escalationReason && <Row label='Escalation'>{ticket.escalationReason}</Row>}
       </div>

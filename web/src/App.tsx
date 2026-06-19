@@ -22,6 +22,7 @@ import InventoryPage from './pages/InventoryPage';
 import DispatchPage from './pages/DispatchPage';
 import HelpdeskPage from './pages/HelpdeskPage';
 import TonerPage from './pages/TonerPage';
+import CustomerPortal from './portal/CustomerPortal';
 import { PERM } from './types';
 
 type View = 'leads' | 'customers' | 'contracts' | 'printers' | 'inventory' | 'dispatch' | 'helpdesk' | 'toner' | 'users' | 'audit' | 'password';
@@ -109,6 +110,12 @@ function Shell() {
 }
 
 export default function App() {
+  // The customer portal is a completely separate surface served at `/portal`.
+  // It has its own token storage and never mounts the staff AuthProvider, so a
+  // customer session and a staff session can never bleed into one another.
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/portal')) {
+    return <CustomerPortal />;
+  }
   return (
     <AuthProvider>
       <Shell />

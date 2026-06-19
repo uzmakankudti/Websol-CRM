@@ -507,6 +507,8 @@ export type TicketStatus = 'OPEN' | 'ASSIGNED' | 'IN_TRANSIT' | 'ON_SITE' | 'IN_
 export type TicketPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type TicketSource = 'PHONE' | 'PORTAL' | 'EMAIL';
 export type SlaAlertType = 'T_MINUS_1H' | 'BREACH' | 'DOUBLE_BREACH';
+export type RaiserType = 'EMPLOYEE' | 'CUSTOMER';
+export type RaiserParty = 'INTERNAL' | 'EXTERNAL';
 
 export interface TicketUserRef { id: number; fullName: string | null; }
 export interface TicketSite { id: number; name: string | null; address: string | null; city: string | null; lat: number | null; lng: number | null; }
@@ -545,6 +547,15 @@ export interface ServiceTicket {
   hasSignature: boolean;
   escalatedAt: string | null;
   escalationReason: string | null;
+  raiser?: {
+    type: RaiserType;
+    party: RaiserParty;
+    userId: number | null;
+    contactId: number | null;
+    name: string | null;
+    email: string | null;
+    displayName: string | null;
+  };
   createdBy: TicketUserRef | null;
   createdAt: string;
   updatedAt: string;
